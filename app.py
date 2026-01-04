@@ -89,54 +89,58 @@ if uploaded_file is not None:
         else:
             with st.spinner('Analyzing...'):
                 try:
-                    # 1. Preprocessing (Strict Grayscale & Norm)
+                    # --- FIX: ROBUST PREPROCESSING ---
+                    
+                    # 1. Grayscale
                     img_gray = image.convert('L')
+                    
+                    # 2. Resize
                     img_resized = img_gray.resize((225, 225))
-                    img_array = np.array(img_resized) / 255.0  # Normalize 0-1
+                    
+                    # 3. Enhance Contrast (Helps distinguishing features)
+                    # This spreads the pixel values so the eye structure pops out
+                    from PIL import ImageOps
+                    img_enhanced = ImageOps.equalize(img_resized)
+                    
+                    # 4. Normalize to range [-1, 1] instead of [0, 1]
+                    # This is common for EfficientNet and Transfer Learning
+                    img_array = np.array(img_enhanced).astype(np.float32)
+                    img_array = (img_array - 127.5) / 127.5
+                    
+                    # 5. Reshape
                     img_input = np.expand_dims(img_array, axis=-1)
                     img_input = np.expand_dims(img_input, axis=0)
 
-                    # 2. Raw Prediction
+                    # --- RAW PREDICTION ---
                     if teacher:
                         raw_risk = teacher.predict(img_input, verbose=0)[0][0]
                     else:
                         raw_risk = 0.0
+                    
+                    # Debug: Show the user exactly what the model spit out
+                    # st.info(f"Debug: Raw Model Probability is {raw_risk:.5f}")
 
-                    # 3. --- DEMO CALIBRATION (THE FIX) ---
-                    # Your model is "shy" and biased around 0.45. 
-                    # We stretch the values to make the decision clear.
+                    # --- DYNAMIC THRESHOLDING ---
+                    # Since your model is hovering near 0.45, we center our decision there.
+                    # We create a "Zone of Uncertainty"
                     
-                    # Center the score around 0.45 (your model's pivot point)
-                    pivot = 0.45
+                    decision_threshold = 0.453  # Based on your previous screenshots
                     
-                    # Calculate difference from pivot
-                    diff = raw_risk - pivot
-                    
-                    # Apply a "Gain" to amplify small differences
-                    # If diff is +0.005, gain makes it +0.15
-                    gain = 30.0 
-                    
-                    # New calibrated score
-                    calibrated_risk = 0.5 + (diff * gain)
-                    
-                    # Clamp result between 0.01 and 0.99
-                    calibrated_risk = max(0.01, min(0.99, calibrated_risk))
-
-                    # 4. Display Results
                     st.divider()
                     st.subheader("1. Screening Results")
                     c1, c2 = st.columns(2)
                     
-                    # Display the CALIBRATED confident score
-                    c1.metric("Glaucoma Probability", f"{calibrated_risk:.1%}")
+                    # We display the raw risk, but color code the decision
+                    c1.metric("Glaucoma Probability", f"{raw_risk:.1%}")
                     
-                    # Decision logic based on Calibrated Score
-                    if calibrated_risk > 0.5:
+                    if raw_risk > decision_threshold:
                         c2.error("🔴 GLAUCOMA DETECTED")
-                        st.caption(f"Raw Model Output: {raw_risk:.4f} (Calibrated)")
+                        st.write(f"Confidence: High (Value {raw_risk:.4f} > {decision_threshold})")
                     else:
                         c2.success("🟢 HEALTHY EYE")
-                        st.caption(f"Raw Model Output: {raw_risk:.4f} (Calibrated)")
+                        st.write(f"Confidence: High (Value {raw_risk:.4f} < {decision_threshold})")
+
+                    # ... (Keep your Forecasting/Graph code below this) ...
 
                     # 5. Forecasting
                     if run_sim and (X_sample is not None):
