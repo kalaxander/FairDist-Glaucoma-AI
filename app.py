@@ -133,13 +133,19 @@ if uploaded_file is not None:
             # --- STEP 2: AI ANALYSIS (Only runs if Valid) ---
             with st.spinner('Analyzing patterns...'):
                 try:
-                    # Preprocessing
+                    # 1. Convert to Grayscale (The model demands 1 channel)
                     img_gray = image.convert('L') 
-                    img_resized = img_gray.resize((225, 225)) 
-                    
-                    img_array = np.array(img_resized)
-                    img_input = np.expand_dims(img_array, axis=-1) # (225, 225, 1)
-                    img_input = np.expand_dims(img_input, axis=0)  # (1, 225, 225, 1)
+                
+                    # 2. Resize to the target size
+                    img_resized = img_gray.resize((225, 225))
+                
+                    # 3. Normalize the data (THIS FIXES THE STUCK PERCENTAGE)
+                    # We divide by 255.0 to squeeze pixel values between 0.0 and 1.0
+                    img_array = np.array(img_resized) / 255.0
+                
+                    # 4. Reshape to match model input: (1, 225, 225, 1)
+                    img_input = np.expand_dims(img_array, axis=-1) # Add channel dim
+                    img_input = np.expand_dims(img_input, axis=0)  # Add batch dim
                     
                     # 1. Ensure RGB (The Teacher model needs color, not grayscale)
                     if image.mode != "RGB":
