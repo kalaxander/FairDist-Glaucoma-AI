@@ -141,6 +141,20 @@ if uploaded_file is not None:
                     img_input = np.expand_dims(img_array, axis=-1) # (225, 225, 1)
                     img_input = np.expand_dims(img_input, axis=0)  # (1, 225, 225, 1)
                     
+                    # 1. Ensure RGB (The Teacher model needs color, not grayscale)
+                    if image.mode != "RGB":
+                        image = image.convert("RGB")
+                    # 2. Resize to the target size
+                    img_resized = image.resize((225, 225))
+                
+                # 3. Normalize the data (Crucial!)
+                # Deep Learning models eat numbers between 0.0 and 1.0
+                # Raw images are 0-255. Dividing by 255.0 fixes the scale.
+                    img_array = np.array(img_resized) / 255.0
+                
+                # 4. Add the batch dimension
+                # Shape becomes (1, 225, 225, 3)
+                    img_input = np.expand_dims(img_array, axis=0)
                     # --- TEACHER PREDICTION ---
                     if teacher:
                         risk = teacher.predict(img_input, verbose=0)[0][0]
