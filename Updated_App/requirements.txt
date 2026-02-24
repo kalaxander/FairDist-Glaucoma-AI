@@ -1,0 +1,8 @@
+streamlit
+tensorflow-cpu
+numpy
+matplotlib
+pillow
+opencv-python-headless
+scipy
+fpdf2
