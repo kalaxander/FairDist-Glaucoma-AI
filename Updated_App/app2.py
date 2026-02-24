@@ -23,10 +23,17 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- 1. LOAD AI MODEL ---
+# --- 1. LOAD AI MODEL ---
 @st.cache_resource
 def load_model():
     try:
-        model = tf.keras.models.load_model('final_glaucoma_model.keras', compile=False)
+        # Find the exact folder where this script is living
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Combine that folder path with the model name
+        model_path = os.path.join(current_dir, 'final_glaucoma_model.keras')
+        
+        # Load the model using the absolute path
+        model = tf.keras.models.load_model(model_path, compile=False)
         return model
     except Exception as e:
         st.error(f"Error loading model: {e}")
